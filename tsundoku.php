@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ブクログ初級</title>
+    <title>積読 - ブクログ初級</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50">
@@ -15,7 +15,7 @@
             <nav class="hidden md:flex space-x-6">
                 <a href="index.php" class="hover:text-blue-200 transition-colors font-medium">検索</a>
                 <a href="read.php" class="hover:text-blue-200 transition-colors font-medium">読了済み</a>
-                <a href="tsundoku.php" class="hover:text-blue-200 transition-colors font-medium">積読</a>
+                <a href="tsundoku.php" class="text-blue-200 font-medium border-b-2 border-blue-200">積読</a>
             </nav>
             <!-- モバイルメニューボタン -->
             <button id="mobile-menu-btn" class="md:hidden">
@@ -29,40 +29,27 @@
             <div class="flex flex-col space-y-2">
                 <a href="index.php" class="hover:text-blue-200 transition-colors font-medium py-2">検索</a>
                 <a href="read.php" class="hover:text-blue-200 transition-colors font-medium py-2">読了済み</a>
-                <a href="tsundoku.php" class="hover:text-blue-200 transition-colors font-medium py-2">積読</a>
+                <a href="tsundoku.php" class="text-blue-200 font-medium py-2">積読</a>
             </div>
         </nav>
     </header>
 
-    <!-- 検索フォーム -->
+    <!-- ページタイトル -->
     <div class="container mx-auto p-4">
-        <form id="search-form" class="mb-4 flex flex-col md:flex-row items-center justify-center">
-            <input 
-                type="text" 
-                name="keyword" 
-                placeholder="検索キーワードを入力" 
-                id="keyword" 
-                class="shadow appearance-none border rounded w-4/5 md:w-auto py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mb-2 md:mb-0 md:mr-2"
-            >
-            <button 
-                type="button" 
-                id="search-button" 
-                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-4/5 md:w-auto"
-            >
-                検索
-            </button>
-        </form>
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">積読の本</h2>
     </div>
 
-    <!-- 検索結果 -->
+    <!-- 積読書籍一覧 -->
     <div class="result">
-
+        <div class="text-center p-4">
+            <p class="text-gray-600">積読の本を読み込み中...</p>
+        </div>
     </div>
 
     <!-- jQueryライブラリ -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <!-- JavaScriptファイル -->
-    <script src="js/script.js"></script>
+    <script src="js/tsundoku.js"></script>
     <script>
         // モバイルメニューの切り替え
         $(document).ready(function() {

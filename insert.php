@@ -2,43 +2,129 @@
 //エラー表示
 ini_set("display_errors", 1);
 
-//1. POSTデータ取得
-$name = $_POST["name"];
-$url = $_POST["url"];
-$comment = $_POST["comment"];
+// 共通設定ファイルを読み込み
+require_once 'config/database.php';
 
+// JSONレスポンス用のヘッダー設定
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST');
+header('Access-Control-Allow-Headers: Content-Type');
 
-//2. DB接続します
-$db_name = ''; // データベース名
-$db_host = ''; // DBホスト名
-$db_id = ''; // DBユーザー名
-$db_pw = ''; // DBパスワード
-$charset = ''; // 文字コード
-
-try {
-  //Password:MAMP='root',XAMPP=''
-  $pdo = new PDO("mysql:dbname=$db_name;charset=$charset;host=$db_host",$db_id,$db_pw);
-} catch (PDOException $e) {
-  exit('DB_Connection:'.$e->getMessage());
+// POSTリクエストのみ受け付け
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo json_encode(['success' => false, 'error' => 'Method not allowed']);
+    exit;
 }
 
+// JSONデータを受け取る
+$input = json_decode(file_get_contents('php://input'), true);
 
-//３．データ登録SQL作成
-$sql = "INSERT INTO gs_bookmark_table(input_date, title, URL, comment)VALUES (sysdate(), :name, :url, :comment)";
-$stmt = $pdo->prepare($sql);
-$stmt->bindValue(':name', $name, PDO::PARAM_STR);  //Integer（数値の場合 PDO::PARAM_INT)
-$stmt->bindValue(':url', $url, PDO::PARAM_STR);  //Integer（数値の場合 PDO::PARAM_INT)
-$stmt->bindValue(':comment', $comment, PDO::PARAM_STR);  //Integer（数値の場合 PDO::PARAM_INT)
-$status = $stmt->execute();
+if (!$input) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'error' => 'Invalid JSON data']);
+    exit;
+}
 
-//４．データ登録処理後
-if($status==false){
-  //SQL実行時にエラーがある場合（エラーオブジェクト取得して表示）
-  $error = $stmt->errorInfo();
-  exit("SQL_error:".$error[2]);
-}else{
-  //５．select_comp.phpへリダイレクト
-  header("Location: select_comp.php");
-  exit;
+// データベース接続
+$database = new Database();
+$pdo = $database->getConnection();
+
+// 必要なデータを取得
+$industryIdentifiers = isset($input['industryIdentifiers']) ? $input['industryIdentifiers'] : [];
+$clickDateTime = isset($input['clickDateTime']) ? $input['clickDateTime'] : date('Y-m-d H:i:s');
+$buttonType = isset($input['buttonType']) ? $input['buttonType'] : '';
+
+// その他のデータ
+$title = isset($input['title']) ? $input['title'] : '';
+$authors = isset($input['authors']) ? $input['authors'] : '';
+$imageUrl = isset($input['imageUrl']) ? $input['imageUrl'] : '';
+$description = isset($input['description']) ? $input['description'] : '';
+
+// デバッグ用ログ
+error_log("Received data:");
+error_log("Industry Identifiers: " . json_encode($industryIdentifiers));
+error_log("Click DateTime: " . $clickDateTime);
+error_log("Button Type: " . $buttonType);
+
+// ISBNを抽出
+$isbn13 = '';
+$isbn10 = '';
+foreach ($industryIdentifiers as $identifier) {
+    if (isset($identifier['type']) && isset($identifier['identifier'])) {
+        if ($identifier['type'] === 'ISBN_13') {
+            $isbn13 = $identifier['identifier'];
+        } elseif ($identifier['type'] === 'ISBN_10') {
+            $isbn10 = $identifier['identifier'];
+        }
+    }
+}
+
+try {
+    // テーブルが存在しない場合は作成
+    $createTable = "
+        CREATE TABLE IF NOT EXISTS book_clicks (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            title TEXT,
+            authors TEXT,
+            image_url TEXT,
+            description TEXT,
+            industry_identifiers JSON,
+            isbn13 VARCHAR(20),
+            isbn10 VARCHAR(15),
+            button_type VARCHAR(20),
+            click_datetime DATETIME,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ";
+    $pdo->exec($createTable);
+
+    // データを挿入
+    $stmt = $pdo->prepare("
+        INSERT INTO book_clicks 
+        (title, authors, image_url, description, industry_identifiers, isbn13, isbn10, button_type, click_datetime) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+
+    $result = $stmt->execute([
+        $title,
+        $authors,
+        $imageUrl,
+        $description,
+        json_encode($industryIdentifiers, JSON_UNESCAPED_UNICODE),
+        $isbn13,
+        $isbn10,
+        $buttonType,
+        date('Y-m-d H:i:s', strtotime($clickDateTime))
+    ]);
+
+    if ($result) {
+        $insertId = $pdo->lastInsertId();
+        
+        echo json_encode([
+            'success' => true,
+            'message' => 'Book data saved successfully',
+            'insert_id' => $insertId,
+            'data' => [
+                'title' => $title,
+                'authors' => $authors,
+                'industryIdentifiers' => $industryIdentifiers,
+                'clickDateTime' => $clickDateTime,
+                'buttonType' => $buttonType,
+                'isbn13' => $isbn13,
+                'isbn10' => $isbn10
+            ]
+        ]);
+    } else {
+        echo json_encode(['success' => false, 'error' => 'Failed to save data']);
+    }
+
+} catch (PDOException $e) {
+    error_log("Database error: " . $e->getMessage());
+    echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
+} catch (Exception $e) {
+    error_log("General error: " . $e->getMessage());
+    echo json_encode(['success' => false, 'error' => 'Error: ' . $e->getMessage()]);
 }
 ?>
